@@ -629,12 +629,20 @@ async def places_autocomplete(q: str = Query(...)):
 
 
 @api_router.get("/route-preview")
-async def route_preview(lat1: float, lon1: float, lat2: float, lon2: float,
-                        user=Depends(get_current_user)):
+async def route_preview(lat1: float, lon1: float, lat2: float, lon2: float):
     try:
         return await osm.route(lat1, lon1, lat2, lon2)
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Live routing unavailable: {e}")
+        # Fallback haversine calculation
+        km = osm._haversine_km(lat1, lon1, lat2, lon2)
+        road_km = round(km * 1.22, 1)
+        duration_min = max(10, round((road_km / 55.0) * 60))
+        return {
+            "distance_km": road_km,
+            "duration_minutes": duration_min,
+            "geometry": [[lat1, lon1], [lat2, lon2]],
+            "approx": True,
+        }
 
 
 @api_router.get("/places/city-info")

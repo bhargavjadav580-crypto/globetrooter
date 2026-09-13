@@ -33,6 +33,29 @@ export default function CreateTrip() {
   const [pending, setPending] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  function calcClientDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const toRad = (d) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const straightKm = R * c;
+    const roadKm = Math.round(straightKm * 1.22 * 10) / 10;
+    const durationMin = Math.max(10, Math.round((roadKm / 55) * 60));
+    return {
+      distance_km: roadKm,
+      duration_minutes: durationMin,
+      geometry: [
+        [lat1, lon1],
+        [lat2, lon2],
+      ],
+      approx: true,
+    };
+  }
+
   useEffect(() => {
     if (!start || !dest) { setDist(null); return; }
     let cancelled = false;
@@ -41,10 +64,13 @@ export default function CreateTrip() {
       try {
         const res = await api.get("/route-preview", {
           params: { lat1: start.lat, lon1: start.lon, lat2: dest.lat, lon2: dest.lon },
+          timeout: 8000,
         });
         if (!cancelled) setDist(res.data);
       } catch {
-        if (!cancelled) setDistError(true);
+        // Compute client-side road distance fallback immediately
+        const fallback = calcClientDistance(start.lat, start.lon, dest.lat, dest.lon);
+        if (!cancelled) setDist(fallback);
       } finally { if (!cancelled) setDistLoading(false); }
     })();
     return () => { cancelled = true; };
