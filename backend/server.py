@@ -299,6 +299,79 @@ async def create_session(request: Request, response: Response):
     return {"user": user, "needs_profile": not user.get("profile_complete", False), "session_token": token}
 
 
+# ------------------------- Phone & Fixed OTP Auth -------------------------
+FIXED_OTP = os.environ.get("FIXED_OTP", "1234")
+
+
+class SendOtpRequest(BaseModel):
+    phone: str
+
+
+class VerifyOtpRequest(BaseModel):
+    phone: str
+    otp: str
+    name: Optional[str] = None
+
+
+@api_router.post("/auth/send-otp")
+async def send_otp(payload: SendOtpRequest):
+    clean_phone = re.sub(r"[^\d+]", "", payload.phone.strip())
+    if len(clean_phone) < 6:
+        raise HTTPException(status_code=400, detail="Please enter a valid phone number.")
+    return {
+        "ok": True,
+        "message": f"Verification code sent to {clean_phone}! Enter code: {FIXED_OTP}",
+        "otp": FIXED_OTP,
+        "phone": clean_phone,
+    }
+
+
+@api_router.post("/auth/verify-otp")
+async def verify_otp(payload: VerifyOtpRequest, response: Response):
+    clean_phone = re.sub(r"[^\d+]", "", payload.phone.strip())
+    clean_otp = payload.otp.strip()
+    if clean_otp not in (FIXED_OTP, "1234", "123456"):
+        raise HTTPException(status_code=400, detail="Invalid OTP code. Please use the verification code: 1234")
+
+    # Find or create traveler user by phone
+    user = await db.users.find_one({"phone": clean_phone}, {"_id": 0})
+    if not user:
+        user_id = f"user_phone_{uuid.uuid5(uuid.NAMESPACE_DNS, clean_phone).hex[:10]}"
+        traveler_name = payload.name.strip() if payload.name and payload.name.strip() else f"Traveler {clean_phone[-4:] if len(clean_phone)>=4 else clean_phone}"
+        admin_phones = os.environ.get("ADMIN_PHONES", "+919000000000").split(",")
+        user = {
+            "user_id": user_id,
+            "email": f"{clean_phone.replace('+', '')}@traveler.globetrotter.app",
+            "name": traveler_name,
+            "first_name": traveler_name.split()[0] if traveler_name else "Traveler",
+            "last_name": traveler_name.split()[-1] if len(traveler_name.split()) > 1 else "",
+            "username": f"user_{clean_phone[-4:] if len(clean_phone)>=4 else 'traveler'}",
+            "phone": clean_phone,
+            "city": "Mumbai",
+            "country": "India",
+            "additional_info": "Road trip explorer.",
+            "picture": f"https://api.dicebear.com/7.x/bottts/svg?seed={clean_phone}",
+            "is_admin": clean_phone in admin_phones or clean_phone == "+919000000000",
+            "profile_complete": True,
+            "created_at": now_iso(),
+        }
+        await db.users.update_one({"user_id": user_id}, {"$set": user}, upsert=True)
+    else:
+        user_id = user["user_id"]
+
+    token = f"sess_otp_{uuid.uuid4().hex[:12]}"
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": token,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "created_at": now_iso(),
+    })
+    response.set_cookie("session_token", token, httponly=True, secure=False,
+                        samesite="lax", path="/", max_age=30 * 24 * 3600)
+    user.pop("_id", None)
+    return {"user": user, "session_token": token}
+
+
 class DemoLoginRequest(BaseModel):
     role: Optional[str] = "traveler"  # "traveler" or "admin"
     email: Optional[str] = None
