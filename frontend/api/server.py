@@ -56,8 +56,17 @@ else:
     logger.info(f"Connecting to live MongoDB: {masked_url} [db: {db_name}]")
 
 app = FastAPI()
-UPLOADS_DIR = ROOT_DIR / "uploads"
-UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    UPLOADS_DIR = Path("/tmp/uploads")
+else:
+    UPLOADS_DIR = ROOT_DIR / "uploads"
+
+try:
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    UPLOADS_DIR = Path("/tmp/uploads")
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 api_router = APIRouter(prefix="/api")
@@ -2109,20 +2118,4 @@ async def upload_image(file: UploadFile = File(...), user=Depends(get_current_us
 async def root():
     return {"message": "GlobeTrotter API"}
 
-
-# Serve Frontend React SPA if production build exists (enables 1-click single service deployment)
-FRONTEND_BUILD = ROOT_DIR.parent / "frontend" / "build"
-if FRONTEND_BUILD.exists():
-    from fastapi.responses import FileResponse
-    if (FRONTEND_BUILD / "static").exists():
-        app.mount("/static", StaticFiles(directory=str(FRONTEND_BUILD / "static")), name="spa_static")
-
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        if full_path.startswith("api") or full_path.startswith("uploads") or full_path in ("docs", "openapi.json", "redoc"):
-            raise HTTPException(status_code=404, detail="Not Found")
-        target_file = FRONTEND_BUILD / full_path
-        if full_path and target_file.is_file():
-            return FileResponse(target_file)
-        return FileResponse(FRONTEND_BUILD / "index.html")
 

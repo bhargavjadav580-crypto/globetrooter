@@ -56,8 +56,17 @@ else:
     logger.info(f"Connecting to live MongoDB: {masked_url} [db: {db_name}]")
 
 app = FastAPI()
-UPLOADS_DIR = ROOT_DIR / "uploads"
-UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    UPLOADS_DIR = Path("/tmp/uploads")
+else:
+    UPLOADS_DIR = ROOT_DIR / "uploads"
+
+try:
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    UPLOADS_DIR = Path("/tmp/uploads")
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 api_router = APIRouter(prefix="/api")
