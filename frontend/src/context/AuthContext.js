@@ -4,25 +4,41 @@ import api, { setAuthToken, clearAuthToken } from "@/lib/api";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUserState] = useState(() => {
+    try {
+      const saved = typeof localStorage !== "undefined" ? localStorage.getItem("gt_auth_user") : null;
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
+
+  const setUser = (newUser) => {
+    setUserState(newUser);
+    if (newUser) {
+      try { localStorage.setItem("gt_auth_user", JSON.stringify(newUser)); } catch (_) {}
+    } else {
+      try { localStorage.removeItem("gt_auth_user"); } catch (_) {}
+    }
+  };
 
   const checkAuth = useCallback(async () => {
     try {
-      // Cookie (httpOnly) is sent automatically via withCredentials: true.
-      // No localStorage read needed — memory token is set explicitly by login flows.
       const res = await api.get("/auth/me");
       setUser(res.data);
-    } catch {
-      setUser(null);
+    } catch (err) {
+      // Only clear user if the server explicitly rejected the token (401)
+      if (err?.response?.status === 401) {
+        clearAuthToken();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // CRITICAL: If returning from OAuth callback, skip the /me check.
-    // AuthCallback will exchange the session_id and establish the session first.
     if (window.location.hash?.includes("session_id=")) {
       setLoading(false);
       return;
