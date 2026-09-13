@@ -2,6 +2,38 @@ import React, { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { MapPin, MagnifyingGlass, Warning, SpinnerGap } from "@phosphor-icons/react";
 
+/**
+ * Direct browser-side Nominatim search — used as fallback when the
+ * server-side /api/places/autocomplete endpoint fails (cold start, timeout, etc.)
+ */
+async function nominatimFallback(q) {
+  const params = new URLSearchParams({
+    q,
+    format: "jsonv2",
+    addressdetails: "1",
+    limit: "6",
+  });
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?${params}`,
+    {
+      headers: {
+        "User-Agent": "GlobeTrotter/1.0 (live travel planner)",
+        Accept: "application/json",
+      },
+    }
+  );
+  if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+  const data = await res.json();
+  return data.map((d) => ({
+    place_id: String(d.place_id),
+    name: (d.display_name || "").split(",")[0],
+    display_name: d.display_name,
+    lat: parseFloat(d.lat),
+    lon: parseFloat(d.lon),
+    type: d.type,
+  }));
+}
+
 export default function PlaceAutocomplete({ value, onSelect, placeholder = "Search a place…", testId = "place-autocomplete" }) {
   const [q, setQ] = useState(value || "");
   const [results, setResults] = useState([]);
@@ -27,10 +59,22 @@ export default function PlaceAutocomplete({ value, onSelect, placeholder = "Sear
     timer.current = setTimeout(async () => {
       setLoading(true); setOpen(true);
       try {
-        const res = await api.get("/places/autocomplete", { params: { q: text } });
+        // Try server-side API first (uses caching, better rate limits)
+        const res = await api.get("/places/autocomplete", { params: { q: text }, timeout: 8000 });
         setResults(res.data);
+        setError(false);
       } catch {
-        setError(true); setResults([]);
+        // Server failed (cold start / timeout / rate limit) — fall back to
+        // calling Nominatim directly from the browser.
+        try {
+          const fallbackResults = await nominatimFallback(text);
+          setResults(fallbackResults);
+          setError(false);
+        } catch {
+          // Both server and client-side Nominatim failed
+          setError(true);
+          setResults([]);
+        }
       } finally { setLoading(false); }
     }, 400);
   };

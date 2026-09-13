@@ -56,7 +56,7 @@ async def autocomplete(q: str):
     if not q or len(q.strip()) < 2:
         return []
     params = {"q": q, "format": "jsonv2", "addressdetails": 1, "limit": 6}
-    async with httpx.AsyncClient(timeout=15, headers=HEADERS) as c:
+    async with httpx.AsyncClient(timeout=8, headers=HEADERS) as c:
         r = await c.get(f"{NOMINATIM}/search", params=params)
         r.raise_for_status()
         data = r.json()
