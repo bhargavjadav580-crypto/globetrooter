@@ -293,7 +293,7 @@ async def create_session(request: Request, response: Response):
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
         "created_at": now_iso(),
     })
-    response.set_cookie("session_token", token, httponly=True, secure=False,
+    response.set_cookie("session_token", token, httponly=True, secure=True,
                         samesite="lax", path="/", max_age=7 * 24 * 3600)
     user.pop("_id", None)
     return {"user": user, "needs_profile": not user.get("profile_complete", False), "session_token": token}
@@ -366,7 +366,7 @@ async def verify_otp(payload: VerifyOtpRequest, response: Response):
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         "created_at": now_iso(),
     })
-    response.set_cookie("session_token", token, httponly=True, secure=False,
+    response.set_cookie("session_token", token, httponly=True, secure=True,
                         samesite="lax", path="/", max_age=30 * 24 * 3600)
     user.pop("_id", None)
     return {"user": user, "session_token": token}
@@ -437,7 +437,7 @@ async def demo_login(payload: DemoLoginRequest, response: Response):
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         "created_at": now_iso()
     })
-    response.set_cookie("session_token", token, httponly=True, secure=False,
+    response.set_cookie("session_token", token, httponly=True, secure=True,
                         samesite="lax", path="/", max_age=30 * 24 * 3600)
     return {"user": user, "needs_profile": False, "session_token": token}
 

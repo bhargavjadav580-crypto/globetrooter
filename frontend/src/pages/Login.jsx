@@ -30,7 +30,7 @@ export default function Login() {
     }
     setSubmitting(true);
     try {
-      const res = await api.post("/auth/send-otp", { phone: phone.trim() });
+      const res = await api.post("/auth/send-otp", { phone: phone.trim() }, { timeout: 15000 });
       toast.success(res.data?.message || "Verification code sent! (Fixed code: 1234)");
       setStep(2);
       setOtp("1234");
@@ -51,19 +51,31 @@ export default function Login() {
       return;
     }
     setSubmitting(true);
-    try {
-      const res = await api.post("/auth/verify-otp", {
+
+    // Helper: attempt OTP verification
+    const tryVerify = () =>
+      api.post("/auth/verify-otp", {
         phone: phone.trim(),
         otp: otp.trim(),
-      });
+      }, { timeout: 15000 });
+
+    try {
+      let res;
+      try {
+        res = await tryVerify();
+      } catch {
+        // First attempt may fail due to Vercel cold start — retry once
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await tryVerify();
+      }
       if (res.data?.session_token) setAuthToken(res.data.session_token);
       if (res.data?.user) setUser(res.data.user);
       toast.success(`Welcome aboard, ${res.data?.user?.name || "Traveler"}! ✨`);
       navigate("/dashboard", { replace: true });
     } catch {
-      // Direct fallback to demo login for guaranteed 100% login success
+      // Both verify attempts failed — fallback to demo login
       try {
-        const res2 = await api.post("/auth/demo-login", { role: "traveler" });
+        const res2 = await api.post("/auth/demo-login", { role: "traveler" }, { timeout: 15000 });
         if (res2.data?.session_token) setAuthToken(res2.data.session_token);
         if (res2.data?.user) setUser(res2.data.user);
         toast.success("Welcome aboard, Traveler! ✨");
@@ -79,7 +91,7 @@ export default function Login() {
   const handleQuickDemo = async (role) => {
     setSubmitting(true);
     try {
-      const res = await api.post("/auth/demo-login", { role });
+      const res = await api.post("/auth/demo-login", { role }, { timeout: 15000 });
       if (res.data?.session_token) setAuthToken(res.data.session_token);
       if (res.data?.user) setUser(res.data.user);
       toast.success(`Signed in as Demo ${role === "admin" ? "Admin" : "Traveler"}!`);
