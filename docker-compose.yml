@@ -1,0 +1,29 @@
+﻿version: '3.8'
+
+services:
+  trip-planner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=trip_planner
+      - PORT=8001
+      - CORS_ORIGINS=*
+      - ENVIRONMENT=production
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

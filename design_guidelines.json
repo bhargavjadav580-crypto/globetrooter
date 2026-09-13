@@ -1,0 +1,108 @@
+{
+  "project_name": "GlobeTrotter",
+  "positioning": "Plan the trip. Understand the trip. Optimize the trip.",
+  "theme": "light_and_dark",
+  "archetype": "ORGANIC & EARTHY",
+  "typography": {
+    "headings": "Cabinet Grotesk",
+    "body": "Manrope",
+    "instructions": "Use 'font-black' or 'font-light' for radical weight contrast in headings. Headings MUST use tight letter spacing (tracking-tight or tracking-tighter). Overlines/Labels MUST be uppercase, tiny, and wide spacing (tracking-[0.2em]). Jump between heading and subheading must not exceed 2 Tailwind steps.",
+    "forbidden_fonts": [
+      "Inter for headings",
+      "Roboto",
+      "Open Sans",
+      "Lato",
+      "Space Grotesk"
+    ]
+  },
+  "colors": {
+    "primary": "Terracotta (Action, Markers, Highlights)",
+    "secondary": "Deep Forest Green (Calm, Trust, secondary actions)",
+    "background_light": "Bone White / Warm Sand",
+    "background_dark": "Obsidian / Deep Slate",
+    "forbidden_colors": [
+      "Teal Green",
+      "Generic SaaS Blue",
+      "#7351B7",
+      "#1B93A4"
+    ],
+    "rules": "Never use pure #000000 or #808080. Tint neutrals with blue (cool) or orange (warm). Ensure APCA contrast standards. Do not use full-screen gradients. Texture (grain/noise) > gloss."
+  },
+  "visual_enhancers": {
+    "surfaces": "Glassmorphism for sticky headers/floating navs (backdrop-blur-xl, bg-white/70 or bg-black/60, backdrop-saturate-150, 1px inner stroke). Flat solid for data dashboards with 1px border. No muddy transparency. Never use transparent background where content scrolls under.",
+    "spacing": "Generous spacing. Use p-8 or p-12 for luxury feel. Containers with border must have internal padding. Mobile images max-h-[80vh].",
+    "shadows": "Layered ambient + direct shadows. Sharp inner contrasts to ensure accessibility."
+  },
+  "grids_and_layouts": {
+    "marketing": "The 'Tetris' Grid (Mode A) for landing page. Asymmetry, gap-8 to gap-12, mix 3+ shapes. Never perfectly fill 100%.",
+    "dashboard": "High Density Grid (Mode B) for Admin Panel and Itinerary Builder. gap-4 to gap-6. Every pixel utilized, h-full on children.",
+    "general": "Mobile-first responsive (always). Optical alignment over geometrical. Grid items MUST be direct children of grid containers."
+  },
+  "motion_and_interactions": {
+    "rules": "Purposeful animation: page transitions, skeleton loaders during live API resolves, animated marker-drop on map load, animated budget counters, hover/press states. MUST respect prefers-reduced-motion.",
+    "libraries": "framer-motion for layout transitions. react-leaflet for map interactions."
+  },
+  "accessibility": {
+    "rules": "Minimum 4.5:1 contrast for normal text. ALWAYS explicitly set text color on hover. Focus states must have HIGHER contrast. aria-hidden on decorative animations.",
+    "testing": "All interactive and key informational elements MUST include a 'data-testid' attribute (kebab-case, role-based)."
+  },
+  "media_and_icons": {
+    "icon_library": "@phosphor-icons/react",
+    "image_urls": [
+      {
+        "url": "https://images.pexels.com/photos/7368308/pexels-photo-7368308.jpeg",
+        "category": "hero_background",
+        "description": "Hands marking destinations on a world map with travel essentials. Max overlay opacity bg-black/50."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1501554728187-ce583db33af7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwxfHxmcmllbmRzJTIwaGlraW5nJTIwdHJpcHxlbnwwfHx8fDE3ODczNzk2OTl8MA&ixlib=rb-4.1.0&q=85",
+        "category": "activity_nature",
+        "description": "Women hiking with dog, representing outdoor activities and community tab."
+      },
+      {
+        "url": "https://images.pexels.com/photos/20208538/pexels-photo-20208538.jpeg",
+        "category": "activity_city",
+        "description": "Historic buildings in Istanbul, representing city exploration."
+      },
+      {
+        "url": "https://images.pexels.com/photos/1078850/pexels-photo-1078850.jpeg",
+        "category": "dashboard_empty_state",
+        "description": "Push pins on world map during sunset, useful for empty states or previous trips row."
+      }
+    ]
+  },
+  "components_strategy": {
+    "general": "Use Shadcn UI for forms, dialogues, inputs. Strip the 'Vercel-look' to match the earthy brand. Don't overuse card component: mix flat, rectangular, and dense styles.",
+    "maps": "react-leaflet with OpenStreetMap (Nominatim, OSRM, Overpass). Animated marker-drop on map load.",
+    "charts": "Shadcn chart components (recharts) for Budget summary chart and Admin analytics. Must be color-blind-friendly.",
+    "forms": "Live autocomplete for Starting Point + Destination. Never use native input/select. Use Shadcn components."
+  },
+  "instructions_to_main_agent": [
+    "Install required dependencies: framer-motion, react-leaflet, leaflet, recharts, sonner, @phosphor-icons/react",
+    "Implement 12 screens as defined in the requirements, strictly integrating live OpenStreetMap APIs with proper loading/error states.",
+    "Trip Score and Budget Guardian features must be highly visual, using earthy accent colors for warnings and scores.",
+    "Ensure map overlays and routing lines match the brand colors (e.g., Terracotta for routes).",
+    "Customize Shadcn components heavily to fit the organic & earthy aesthetic.",
+    "Include 'data-testid' on every button, link, form input, map marker, and interactive chart element.",
+    "Do NOT use HTML-based components for advanced user interactions (dropdown, calendar, toast)."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: 'transition: all'. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add '.App { text-align: center; }' in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like \ud83e\udd16\ud83e\udde0\ud83d\udcad\ud83d\udca1\ud83d\udd2e\ud83c\udfaf etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Create new components that match the style and conventions of existing components when needed.",
+    "Examine existing components to understand the project's component patterns before creating new ones.",
+    "Use 'sonner' for toasts. Sonner component are located in '/app/frontend/src/components/ui/sonner.tsx' (adjust path if needed)."
+  ]
+}

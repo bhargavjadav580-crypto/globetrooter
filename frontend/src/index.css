@@ -1,0 +1,156 @@
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@300,400,500,700,800,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+    :root {
+        --background: 38 40% 96%;
+        --foreground: 20 14% 14%;
+        --card: 40 46% 98%;
+        --card-foreground: 20 14% 14%;
+        --popover: 40 46% 98%;
+        --popover-foreground: 20 14% 14%;
+        --primary: 14 72% 53%;
+        --primary-foreground: 40 50% 98%;
+        --secondary: 152 30% 22%;
+        --secondary-foreground: 40 50% 96%;
+        --muted: 36 24% 90%;
+        --muted-foreground: 24 8% 42%;
+        --accent: 152 24% 88%;
+        --accent-foreground: 152 40% 18%;
+        --destructive: 6 74% 48%;
+        --destructive-foreground: 40 50% 98%;
+        --border: 32 18% 84%;
+        --input: 32 18% 84%;
+        --ring: 14 72% 53%;
+        --chart-1: 14 72% 53%;
+        --chart-2: 152 34% 32%;
+        --chart-3: 38 68% 55%;
+        --chart-4: 20 50% 40%;
+        --chart-5: 90 24% 42%;
+        --radius: 0.9rem;
+    }
+    .dark {
+        --background: 20 14% 8%;
+        --foreground: 38 30% 92%;
+        --card: 20 12% 11%;
+        --card-foreground: 38 30% 92%;
+        --popover: 20 12% 11%;
+        --popover-foreground: 38 30% 92%;
+        --primary: 14 78% 58%;
+        --primary-foreground: 20 14% 8%;
+        --secondary: 152 26% 42%;
+        --secondary-foreground: 38 30% 94%;
+        --muted: 20 10% 18%;
+        --muted-foreground: 36 14% 62%;
+        --accent: 152 20% 22%;
+        --accent-foreground: 152 30% 82%;
+        --destructive: 6 64% 46%;
+        --destructive-foreground: 38 30% 94%;
+        --border: 20 10% 20%;
+        --input: 20 10% 22%;
+        --ring: 14 78% 58%;
+        --chart-1: 14 78% 58%;
+        --chart-2: 152 40% 52%;
+        --chart-3: 38 72% 60%;
+        --chart-4: 20 55% 55%;
+        --chart-5: 90 30% 55%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .font-display {
+        font-family: 'Cabinet Grotesk', 'Manrope', sans-serif;
+    }
+    ::selection {
+        background: hsl(var(--primary) / 0.28);
+    }
+    /* Custom Modern Scrollbars */
+    ::-webkit-scrollbar {
+        width: 7px;
+        height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: hsl(var(--muted-foreground) / 0.25);
+        border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--muted-foreground) / 0.45);
+    }
+}
+
+@layer utilities {
+    .overline {
+        @apply uppercase tracking-[0.22em] text-xs font-semibold;
+    }
+    .glass {
+        background: hsl(var(--card) / 0.78);
+        backdrop-filter: blur(18px) saturate(160%);
+        -webkit-backdrop-filter: blur(18px) saturate(160%);
+    }
+    .card-hover {
+        @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary/30;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* Leaflet marker drop animation */
+.gt-marker {
+    animation: gt-drop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35));
+}
+@keyframes gt-drop {
+    0% { transform: translateY(-220px) scale(0.4); opacity: 0; }
+    70% { opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.gt-pin {
+    width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid white;
+    font-weight: 800; font-size: 11px; color: white;
+}
+.gt-pin span { transform: rotate(45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+    .gt-marker { animation: none; }
+}
+
+/* Print / PDF layout for Full Trip Plan, Itinerary & Expense Reports */
+@media print {
+    nav, header, .no-print { display: none !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .print-area { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    .print-area .rounded-3xl, .print-area .rounded-2xl {
+        border-color: #e2e8f0 !important; box-shadow: none !important;
+        break-inside: avoid; page-break-inside: avoid;
+        background: #fff !important;
+    }
+    .leaflet-container { height: 340px !important; }
+    .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+    a[href]:after { content: "" !important; }
+}
