@@ -210,15 +210,20 @@ export default function Templates() {
   const handleClone = async (templateId) => {
     setCloning(templateId);
     try {
-      const r = await api.post(`/templates/${templateId}/clone`, {}, { timeout: 12000 });
-      const tripId = r.data?.trip?.id;
-      toast.success("Template cloned! Customize your trip now.");
-      if (tripId) navigate(`/trips/${tripId}/build`);
-      else navigate("/trips");
-    } catch (e) {
-      // Direct client fallback to create the trip
+      const tmpl = templates.find((t) => t.id === templateId) || DEFAULT_TEMPLATES.find((t) => t.id === templateId) || DEFAULT_TEMPLATES[0];
+
+      // Attempt 1: Clone via dedicated clone endpoint
       try {
-        const tmpl = templates.find((t) => t.id === templateId) || DEFAULT_TEMPLATES[0];
+        const r = await api.post(`/templates/${templateId}/clone`, {}, { timeout: 12000 });
+        const tripId = r.data?.trip?.id;
+        toast.success("Template cloned! Customize your trip now.");
+        if (tripId) navigate(`/trips/${tripId}/build`);
+        else navigate("/trips");
+        return;
+      } catch (_) { /* fall through */ }
+
+      // Attempt 2: Create trip via /trips POST
+      try {
         const res = await api.post("/trips", {
           name: tmpl.name,
           description: tmpl.description,
@@ -230,13 +235,30 @@ export default function Templates() {
           dest_lon: tmpl.dest_lon,
           total_budget: tmpl.total_budget || 0,
           cover_image: tmpl.cover_image,
-        });
+        }, { timeout: 12000 });
         const trip = res.data;
         toast.success("Template cloned! Customize your trip now.");
         navigate(`/trips/${trip.id}/build`);
-      } catch {
-        toast.error("Could not clone template. Please try again.");
-      }
+        return;
+      } catch (_) { /* fall through */ }
+
+      // Attempt 3: Navigate to create trip page with template data pre-filled (fully client-side, always works)
+      toast.success("Opening trip creator with template data...");
+      navigate("/trips/new", {
+        state: {
+          fromTemplate: true,
+          name: tmpl.name,
+          description: tmpl.description,
+          starting_point: tmpl.starting_point,
+          destination: tmpl.destination,
+          start_lat: tmpl.start_lat,
+          start_lon: tmpl.start_lon,
+          dest_lat: tmpl.dest_lat,
+          dest_lon: tmpl.dest_lon,
+          total_budget: tmpl.total_budget || 0,
+          cover_image: tmpl.cover_image,
+        },
+      });
     } finally {
       setCloning(null);
     }

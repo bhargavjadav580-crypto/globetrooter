@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import PlaceAutocomplete from "@/components/PlaceAutocomplete";
@@ -13,20 +13,44 @@ import ImageUploader from "@/components/ImageUploader";
 
 export default function CreateTrip() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const location = useLocation();
+  const stateData = location.state || {};
+
+  const [name, setName] = useState(stateData.name || "");
+  const [description, setDescription] = useState(stateData.description || "");
   const COVERS = [
     "https://images.pexels.com/photos/1078850/pexels-photo-1078850.jpeg",
     "https://images.pexels.com/photos/20208538/pexels-photo-20208538.jpeg",
     "https://images.pexels.com/photos/7368308/pexels-photo-7368308.jpeg",
     "https://images.unsplash.com/photo-1501554728187-ce583db33af7?w=800&q=70",
   ];
-  const [cover, setCover] = useState(COVERS[0]);
-  const [start, setStart] = useState(null);
-  const [dest, setDest] = useState(null);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [budget, setBudget] = useState("");
+  const [cover, setCover] = useState(stateData.cover_image || COVERS[0]);
+  const [start, setStart] = useState(
+    stateData.starting_point && stateData.start_lat
+      ? { name: stateData.starting_point, lat: stateData.start_lat, lon: stateData.start_lon, place_id: null }
+      : null
+  );
+  const [dest, setDest] = useState(
+    stateData.destination && stateData.dest_lat
+      ? { name: stateData.destination, lat: stateData.dest_lat, lon: stateData.dest_lon, place_id: null }
+      : null
+  );
+  const [startDate, setStartDate] = useState(() => {
+    if (stateData.fromTemplate) {
+      const d = new Date();
+      return d.toISOString().split("T")[0];
+    }
+    return "";
+  });
+  const [endDate, setEndDate] = useState(() => {
+    if (stateData.fromTemplate) {
+      const d = new Date();
+      d.setDate(d.getDate() + 5);
+      return d.toISOString().split("T")[0];
+    }
+    return "";
+  });
+  const [budget, setBudget] = useState(stateData.total_budget ? String(stateData.total_budget) : "");
   const [dist, setDist] = useState(null);
   const [distLoading, setDistLoading] = useState(false);
   const [distError, setDistError] = useState(false);

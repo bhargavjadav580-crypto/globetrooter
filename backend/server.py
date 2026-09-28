@@ -1532,7 +1532,18 @@ async def list_templates():
 
 
 @api_router.post("/templates/{template_id}/clone")
-async def clone_template(template_id: str, user=Depends(get_current_user)):
+async def clone_template(template_id: str, request: Request):
+    # Optional auth — clone works even if user is not logged in
+    try:
+        user = await get_current_user(request)
+    except Exception:
+        # Create or reuse a guest user so clone always works
+        guest_id = f"guest_{str(uuid.uuid4())[:8]}"
+        user = {"user_id": guest_id, "display_name": "Guest Traveler", "email": None, "is_admin": False}
+        try:
+            await db.users.update_one({"user_id": guest_id}, {"$setOnInsert": user}, upsert=True)
+        except Exception:
+            pass
     """Clone a curated template into the user's trips library."""
     tmpl = None
     try:
