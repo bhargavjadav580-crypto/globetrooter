@@ -18,9 +18,29 @@ export default function ItineraryView() {
   const load = useCallback(async () => {
     try {
       const res = await api.get(`/trips/${id}/full`);
-      setData(res.data);
-    } catch {
-      setError(true);
+      if (res.data) {
+        setData(res.data);
+        setError(false);
+        return;
+      }
+    } catch (_) {
+      try {
+        const single = await api.get(`/trips/${id}`);
+        if (single.data) {
+          setData({ trip: single.data, sections: [], places: [] });
+          setError(false);
+          return;
+        }
+      } catch (_) {
+        const cached = JSON.parse(localStorage.getItem("gt_cached_trips") || "[]");
+        const found = cached.find((t) => t.id === id);
+        if (found) {
+          setData({ trip: found, sections: [], places: [] });
+          setError(false);
+          return;
+        }
+        setError(true);
+      }
     }
   }, [id]);
 

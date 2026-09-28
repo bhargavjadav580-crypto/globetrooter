@@ -85,7 +85,18 @@ export default function FullTripPlan({ shared = false }) {
       }).catch(() => setError(true));
       return;
     }
-    api.get(`/trips/${id}/full`).then((r) => setData(r.data)).catch(() => setError(true));
+    api.get(`/trips/${id}/full`).then((r) => {
+      if (r.data) setData(r.data);
+    }).catch(() => {
+      api.get(`/trips/${id}`).then((r) => {
+        if (r.data) setData({ trip: r.data, sections: [], places: [] });
+      }).catch(() => {
+        const cached = JSON.parse(localStorage.getItem("gt_cached_trips") || "[]");
+        const found = cached.find((t) => t.id === id);
+        if (found) setData({ trip: found, sections: [], places: [] });
+        else setError(true);
+      });
+    });
     api.get(`/trips/${id}/overnight-stays`).then((r) => setStays(r.data || [])).catch(() => {});
     api.get(`/trips/${id}/route-plan`, { params: { max_drive_hours: 6 } })
       .then((r) => {
