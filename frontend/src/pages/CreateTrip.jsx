@@ -119,26 +119,42 @@ export default function CreateTrip() {
         destination: dest.name, destination_place_id: dest.place_id,
         dest_lat: dest.lat, dest_lon: dest.lon,
         start_date: startDate, end_date: endDate, total_budget: Number(budget) || 0,
-      });
+      }, { timeout: 15000 });
       const trip = res.data;
-      if (pending.length > 0) {
-        const sec = await api.post(`/trips/${trip.id}/sections`, {
-          type: "activity", title: dest.name, place_name: dest.name,
-          latitude: dest.lat, longitude: dest.lon,
-          date_start: startDate, date_end: endDate,
-        });
-        for (const p of pending) {
-          await api.post(`/sections/${sec.data.id}/places`, {
-            external_place_id: p.external_place_id, name: p.name, category: p.category,
-            rating: p.rating, photo_url: p.photo_url, description: p.description,
-            lat: p.lat, lon: p.lon, cost_estimate: 0,
-          });
+
+      if (pending.length > 0 && trip?.id) {
+        try {
+          const sec = await api.post(`/trips/${trip.id}/sections`, {
+            type: "activity", title: dest.name, place_name: dest.name,
+            latitude: dest.lat, longitude: dest.lon,
+            date_start: startDate, date_end: endDate,
+          }, { timeout: 8000 });
+          if (sec.data?.id) {
+            for (const p of pending) {
+              try {
+                await api.post(`/sections/${sec.data.id}/places`, {
+                  external_place_id: p.external_place_id, name: p.name, category: p.category,
+                  rating: p.rating, photo_url: p.photo_url, description: p.description,
+                  lat: p.lat, lon: p.lon, cost_estimate: 0,
+                }, { timeout: 4000 });
+              } catch (_) {
+                // Ignore individual place add errors so trip creation doesn't fail
+              }
+            }
+          }
+        } catch (_) {
+          // Ignore initial section add error so user still enters trip builder
         }
       }
+
       toast.success("Trip created! Let's build the itinerary.");
-      navigate(`/trips/${trip.id}/build`);
+      if (trip?.id) {
+        navigate(`/trips/${trip.id}/build`);
+      } else {
+        navigate("/trips");
+      }
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Could not create trip.");
+      toast.error(e?.response?.data?.detail || "Could not create trip. Please try again.");
     } finally { setSaving(false); }
   };
 
