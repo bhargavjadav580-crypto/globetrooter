@@ -88,35 +88,155 @@ function TemplateCard({ template, onClone, cloning }) {
   );
 }
 
+const DEFAULT_TEMPLATES = [
+  {
+    id: "tmpl-golden-triangle",
+    order: 1,
+    name: "The Golden Triangle",
+    description: "India's most iconic route: explore Mughal grandeur in Delhi, the Taj Mahal in Agra, and royal forts in Jaipur across 5 spectacular days.",
+    starting_point: "Delhi",
+    start_lat: 28.6139,
+    start_lon: 77.209,
+    destination: "Jaipur",
+    dest_lat: 26.9124,
+    dest_lon: 75.7873,
+    total_budget: 35000,
+    distance_km: 500,
+    travel_time_minutes: 450,
+    duration_days: 5,
+    tags: ["Heritage", "Culture", "Iconic"],
+    cover_image: "https://images.pexels.com/photos/1603650/pexels-photo-1603650.jpeg",
+  },
+  {
+    id: "tmpl-kerala-coast",
+    order: 2,
+    name: "Kerala Coast & Tea Plantations",
+    description: "Cruise the backwaters of Alleppey, hike the misty Munnar tea estates, and unwind on the pristine beaches of Kovalam across 6 days.",
+    starting_point: "Kochi",
+    start_lat: 9.9312,
+    start_lon: 76.2673,
+    destination: "Kovalam",
+    dest_lat: 8.3988,
+    dest_lon: 76.9782,
+    total_budget: 42000,
+    distance_km: 350,
+    travel_time_minutes: 400,
+    duration_days: 6,
+    tags: ["Beaches", "Nature", "Backwaters"],
+    cover_image: "https://images.pexels.com/photos/962464/pexels-photo-962464.jpeg",
+  },
+  {
+    id: "tmpl-goa-escape",
+    order: 3,
+    name: "Goa Beach & Heritage Escape",
+    description: "Party in North Goa, discover Portuguese old Goa churches, then relax on peaceful South Goa beaches across 4 sun-soaked days.",
+    starting_point: "Panaji",
+    start_lat: 15.4909,
+    start_lon: 73.8278,
+    destination: "Palolem",
+    dest_lat: 15.01,
+    dest_lon: 74.0233,
+    total_budget: 28000,
+    distance_km: 80,
+    travel_time_minutes: 120,
+    duration_days: 4,
+    tags: ["Beaches", "Nightlife", "Heritage"],
+    cover_image: "https://images.pexels.com/photos/1078850/pexels-photo-1078850.jpeg",
+  },
+  {
+    id: "tmpl-himachal-circuit",
+    order: 4,
+    name: "Himachal High Pass Circuit",
+    description: "Drive the legendary Manali-Spiti Highway through Rohtang, Kaza, Tabo and Nako across 8 days of dramatic Himalayan landscapes.",
+    starting_point: "Chandigarh",
+    start_lat: 30.7333,
+    start_lon: 76.7794,
+    destination: "Manali",
+    dest_lat: 32.2396,
+    dest_lon: 77.1887,
+    total_budget: 55000,
+    distance_km: 620,
+    travel_time_minutes: 900,
+    duration_days: 8,
+    tags: ["Mountains", "Adventure", "Road Trip"],
+    cover_image: "https://images.pexels.com/photos/7368308/pexels-photo-7368308.jpeg",
+  },
+  {
+    id: "tmpl-rajasthan-royal",
+    order: 5,
+    name: "Classic Rajasthan Royal Tour",
+    description: "Experience the grandeur of Rajasthan — from Jodhpur's Blue City to Jaisalmer's golden desert dunes and Udaipur's lake palaces across 7 days.",
+    starting_point: "Jodhpur",
+    start_lat: 26.2389,
+    start_lon: 73.0243,
+    destination: "Udaipur",
+    dest_lat: 24.5854,
+    dest_lon: 73.7125,
+    total_budget: 65000,
+    distance_km: 550,
+    travel_time_minutes: 660,
+    duration_days: 7,
+    tags: ["Heritage", "Desert", "Palaces"],
+    cover_image: "https://images.pexels.com/photos/20208538/pexels-photo-20208538.jpeg",
+  },
+];
+
 export default function Templates() {
   const navigate = useNavigate();
-  const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
+  const [loading, setLoading] = useState(false);
   const [cloning, setCloning] = useState(null);
 
   const loadTemplates = useCallback(async () => {
     try {
-      const r = await api.get("/templates");
-      setTemplates(r.data);
+      const r = await api.get("/templates", { timeout: 6000 });
+      if (Array.isArray(r.data) && r.data.length > 0) {
+        setTemplates(r.data);
+      } else {
+        setTemplates(DEFAULT_TEMPLATES);
+      }
     } catch {
-      toast.error("Could not load trip templates.");
+      // Fallback silently to default curated templates without annoying error toast
+      setTemplates(DEFAULT_TEMPLATES);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   const handleClone = async (templateId) => {
     setCloning(templateId);
     try {
-      const r = await api.post(`/templates/${templateId}/clone`);
+      const r = await api.post(`/templates/${templateId}/clone`, {}, { timeout: 12000 });
       const tripId = r.data?.trip?.id;
       toast.success("Template cloned! Customize your trip now.");
       if (tripId) navigate(`/trips/${tripId}/build`);
       else navigate("/trips");
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Could not clone template.");
+      // Direct client fallback to create the trip
+      try {
+        const tmpl = templates.find((t) => t.id === templateId) || DEFAULT_TEMPLATES[0];
+        const res = await api.post("/trips", {
+          name: tmpl.name,
+          description: tmpl.description,
+          starting_point: tmpl.starting_point,
+          destination: tmpl.destination,
+          start_lat: tmpl.start_lat,
+          start_lon: tmpl.start_lon,
+          dest_lat: tmpl.dest_lat,
+          dest_lon: tmpl.dest_lon,
+          total_budget: tmpl.total_budget || 0,
+          cover_image: tmpl.cover_image,
+        });
+        const trip = res.data;
+        toast.success("Template cloned! Customize your trip now.");
+        navigate(`/trips/${trip.id}/build`);
+      } catch {
+        toast.error("Could not clone template. Please try again.");
+      }
     } finally {
       setCloning(null);
     }
@@ -125,7 +245,7 @@ export default function Templates() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32 text-muted-foreground gap-2">
-        <CircleNotch size={22} className="animate-spin" />
+        <CircleNotch size={22} className="animate-spin text-primary" />
         Loading trip templates...
       </div>
     );

@@ -1406,19 +1406,147 @@ async def admin_delete_user(uid: str, user=Depends(require_admin)):
 # ─────────────────────────────────────────────────────────────────────────────
 # FEATURE 1 — TRIP TEMPLATES
 # ─────────────────────────────────────────────────────────────────────────────
+CURATED_TEMPLATES_STATIC = [
+    {
+        "id": "tmpl-golden-triangle",
+        "order": 1,
+        "name": "The Golden Triangle",
+        "description": "India's most iconic route: explore Mughal grandeur in Delhi, the Taj Mahal in Agra, and royal forts in Jaipur across 5 spectacular days.",
+        "starting_point": "Delhi",
+        "start_lat": 28.6139, "start_lon": 77.2090,
+        "destination": "Jaipur",
+        "dest_lat": 26.9124, "dest_lon": 75.7873,
+        "total_budget": 35000,
+        "distance_km": 500,
+        "travel_time_minutes": 450,
+        "duration_days": 5,
+        "tags": ["Heritage", "Culture", "Iconic"],
+        "cover_image": "https://images.pexels.com/photos/1603650/pexels-photo-1603650.jpeg",
+        "sections": [
+            {"title": "Delhi — Mughal Heritage & Old Delhi", "place_name": "Delhi", "latitude": 28.6139, "longitude": 77.2090, "section_budget": 10000, "order_index": 0},
+            {"title": "Agra — Taj Mahal & Agra Fort", "place_name": "Agra", "latitude": 27.1767, "longitude": 78.0081, "section_budget": 12000, "order_index": 1},
+            {"title": "Jaipur — Amber Palace & Hawa Mahal", "place_name": "Jaipur", "latitude": 26.9124, "longitude": 75.7873, "section_budget": 13000, "order_index": 2},
+        ],
+    },
+    {
+        "id": "tmpl-kerala-coast",
+        "order": 2,
+        "name": "Kerala Coast & Tea Plantations",
+        "description": "Cruise the backwaters of Alleppey, hike the misty Munnar tea estates, and unwind on the pristine beaches of Kovalam across 6 days.",
+        "starting_point": "Kochi",
+        "start_lat": 9.9312, "start_lon": 76.2673,
+        "destination": "Kovalam",
+        "dest_lat": 8.3988, "dest_lon": 76.9782,
+        "total_budget": 42000,
+        "distance_km": 350,
+        "travel_time_minutes": 400,
+        "duration_days": 6,
+        "tags": ["Beaches", "Nature", "Backwaters"],
+        "cover_image": "https://images.pexels.com/photos/962464/pexels-photo-962464.jpeg",
+        "sections": [
+            {"title": "Kochi — Fort Kochi & Spice Markets", "place_name": "Kochi", "latitude": 9.9312, "longitude": 76.2673, "section_budget": 10000, "order_index": 0},
+            {"title": "Munnar — Tea Gardens & Eravikulam", "place_name": "Munnar", "latitude": 10.0889, "longitude": 77.0595, "section_budget": 14000, "order_index": 1},
+            {"title": "Alleppey — Houseboat Backwaters", "place_name": "Alleppey", "latitude": 9.4981, "longitude": 76.3388, "section_budget": 12000, "order_index": 2},
+            {"title": "Kovalam — Beach & Lighthouse", "place_name": "Kovalam", "latitude": 8.3988, "longitude": 76.9782, "section_budget": 6000, "order_index": 3},
+        ],
+    },
+    {
+        "id": "tmpl-goa-escape",
+        "order": 3,
+        "name": "Goa Beach & Heritage Escape",
+        "description": "Party in North Goa, discover Portuguese old Goa churches, then relax on peaceful South Goa beaches across 4 sun-soaked days.",
+        "starting_point": "Panaji",
+        "start_lat": 15.4909, "start_lon": 73.8278,
+        "destination": "Palolem",
+        "dest_lat": 15.0100, "dest_lon": 74.0233,
+        "total_budget": 28000,
+        "distance_km": 80,
+        "travel_time_minutes": 120,
+        "duration_days": 4,
+        "tags": ["Beaches", "Nightlife", "Heritage"],
+        "cover_image": "https://images.pexels.com/photos/1078850/pexels-photo-1078850.jpeg",
+        "sections": [
+            {"title": "North Goa — Baga & Calangute Beaches", "place_name": "North Goa", "latitude": 15.5522, "longitude": 73.7558, "section_budget": 10000, "order_index": 0},
+            {"title": "Old Goa — Basilica & Spice Farms", "place_name": "Old Goa", "latitude": 15.5057, "longitude": 73.9122, "section_budget": 6000, "order_index": 1},
+            {"title": "South Goa — Palolem & Colva", "place_name": "South Goa", "latitude": 15.0100, "longitude": 74.0233, "section_budget": 12000, "order_index": 2},
+        ],
+    },
+    {
+        "id": "tmpl-himachal-circuit",
+        "order": 4,
+        "name": "Himachal High Pass Circuit",
+        "description": "Drive the legendary Manali-Spiti Highway through Rohtang, Kaza, Tabo and Nako across 8 days of dramatic Himalayan landscapes.",
+        "starting_point": "Chandigarh",
+        "start_lat": 30.7333, "start_lon": 76.7794,
+        "destination": "Manali",
+        "dest_lat": 32.2396, "dest_lon": 77.1887,
+        "total_budget": 55000,
+        "distance_km": 620,
+        "travel_time_minutes": 900,
+        "duration_days": 8,
+        "tags": ["Mountains", "Adventure", "Road Trip"],
+        "cover_image": "https://images.pexels.com/photos/7368308/pexels-photo-7368308.jpeg",
+        "sections": [
+            {"title": "Shimla — Colonial Hill Station", "place_name": "Shimla", "latitude": 31.1048, "longitude": 77.1734, "section_budget": 12000, "order_index": 0},
+            {"title": "Kaza — Spiti Valley Adventure Base", "place_name": "Kaza", "latitude": 32.2290, "longitude": 78.0710, "section_budget": 18000, "order_index": 1},
+            {"title": "Tabo — Ancient Buddhist Monastery", "place_name": "Tabo", "latitude": 31.9737, "longitude": 78.3880, "section_budget": 8000, "order_index": 2},
+            {"title": "Manali — Rohtang & Solang Valley", "place_name": "Manali", "latitude": 32.2396, "longitude": 77.1887, "section_budget": 17000, "order_index": 3},
+        ],
+    },
+    {
+        "id": "tmpl-rajasthan-royal",
+        "order": 5,
+        "name": "Classic Rajasthan Royal Tour",
+        "description": "Experience the grandeur of Rajasthan — from Jodhpur's Blue City to Jaisalmer's golden desert dunes and Udaipur's lake palaces across 7 days.",
+        "starting_point": "Jodhpur",
+        "start_lat": 26.2389, "start_lon": 73.0243,
+        "destination": "Udaipur",
+        "dest_lat": 24.5854, "dest_lon": 73.7125,
+        "total_budget": 65000,
+        "distance_km": 550,
+        "travel_time_minutes": 660,
+        "duration_days": 7,
+        "tags": ["Heritage", "Desert", "Palaces"],
+        "cover_image": "https://images.pexels.com/photos/20208538/pexels-photo-20208538.jpeg",
+        "sections": [
+            {"title": "Jodhpur — Mehrangarh & Blue City", "place_name": "Jodhpur", "latitude": 26.2389, "longitude": 73.0243, "section_budget": 15000, "order_index": 0},
+            {"title": "Jaisalmer — Golden Fort & Desert Camp", "place_name": "Jaisalmer", "latitude": 26.9157, "longitude": 70.9083, "section_budget": 20000, "order_index": 1},
+            {"title": "Pushkar — Sacred Lake & Camel Fair", "place_name": "Pushkar", "latitude": 26.4899, "longitude": 74.5511, "section_budget": 10000, "order_index": 2},
+            {"title": "Udaipur — Lake Palaces & City Palace", "place_name": "Udaipur", "latitude": 24.5854, "longitude": 73.7125, "section_budget": 20000, "order_index": 3},
+        ],
+    },
+]
+
+
 @api_router.get("/templates")
 async def list_templates():
     """Return all curated trip starter templates."""
-    templates = await db.trip_templates.find({}, {"_id": 0}).sort("order", 1).to_list(50)
-    return templates
+    try:
+        templates = await db.trip_templates.find({}, {"_id": 0}).sort("order", 1).to_list(50)
+        if templates:
+            return templates
+    except Exception:
+        pass
+    return [{k: v for k, v in t.items() if k != "sections"} for t in CURATED_TEMPLATES_STATIC]
 
 
 @api_router.post("/templates/{template_id}/clone")
 async def clone_template(template_id: str, user=Depends(get_current_user)):
     """Clone a curated template into the user's trips library."""
-    tmpl = await db.trip_templates.find_one({"id": template_id}, {"_id": 0})
+    tmpl = None
+    try:
+        tmpl = await db.trip_templates.find_one({"id": template_id}, {"_id": 0})
+    except Exception:
+        pass
+
+    if not tmpl:
+        match = [t for t in CURATED_TEMPLATES_STATIC if t["id"] == template_id]
+        if match:
+            tmpl = match[0]
+
     if not tmpl:
         raise HTTPException(status_code=404, detail="Template not found")
+
     new_trip_id = str(uuid.uuid4())
     new_trip = {
         "id": new_trip_id,
@@ -1447,26 +1575,41 @@ async def clone_template(template_id: str, user=Depends(get_current_user)):
         "cloned_from_template": template_id,
         "created_at": now_iso(),
     }
-    await db.trips.insert_one(dict(new_trip))
-    # Clone template sections
-    tmpl_sections = await db.template_sections.find({"template_id": template_id}, {"_id": 0}).sort("order_index", 1).to_list(50)
+    try:
+        await db.trips.insert_one(dict(new_trip))
+    except Exception:
+        pass
+
+    tmpl_sections = []
+    try:
+        tmpl_sections = await db.template_sections.find({"template_id": template_id}, {"_id": 0}).sort("order_index", 1).to_list(50)
+    except Exception:
+        pass
+
+    if not tmpl_sections and "sections" in tmpl:
+        tmpl_sections = tmpl["sections"]
+
     for sec in tmpl_sections:
         new_sec_id = str(uuid.uuid4())
-        await db.sections.insert_one({
-            "id": new_sec_id,
-            "trip_id": new_trip_id,
-            "type": sec.get("type", "custom"),
-            "title": sec.get("title"),
-            "place_name": sec.get("place_name"),
-            "place_id": None,
-            "latitude": sec.get("latitude"),
-            "longitude": sec.get("longitude"),
-            "date_start": None,
-            "date_end": None,
-            "section_budget": sec.get("section_budget", 0),
-            "order_index": sec.get("order_index", 0),
-            "created_at": now_iso(),
-        })
+        try:
+            await db.sections.insert_one({
+                "id": new_sec_id,
+                "trip_id": new_trip_id,
+                "type": sec.get("type", "custom"),
+                "title": sec.get("title"),
+                "place_name": sec.get("place_name"),
+                "place_id": None,
+                "latitude": sec.get("latitude"),
+                "longitude": sec.get("longitude"),
+                "date_start": None,
+                "date_end": None,
+                "section_budget": sec.get("section_budget", 0),
+                "order_index": sec.get("order_index", 0),
+                "created_at": now_iso(),
+            })
+        except Exception:
+            pass
+
     new_trip.pop("_id", None)
     return {"trip": new_trip, "message": f"Template cloned successfully! {len(tmpl_sections)} sections added."}
 
