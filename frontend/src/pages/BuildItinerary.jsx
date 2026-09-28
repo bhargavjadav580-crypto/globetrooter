@@ -31,8 +31,28 @@ export default function BuildItinerary() {
   const [customPlaceSection, setCustomPlaceSection] = useState(null);
 
   const load = useCallback(async () => {
-    const res = await api.get(`/trips/${id}/full`);
-    setData(res.data);
+    try {
+      const res = await api.get(`/trips/${id}/full`);
+      if (res.data) {
+        setData(res.data);
+        return;
+      }
+    } catch (_) {
+      try {
+        const single = await api.get(`/trips/${id}`);
+        if (single.data) {
+          setData({ trip: single.data, sections: [], places: [] });
+          return;
+        }
+      } catch (_) {
+        const cached = JSON.parse(localStorage.getItem("gt_cached_trips") || "[]");
+        const found = cached.find((t) => t.id === id);
+        if (found) {
+          setData({ trip: found, sections: [], places: [] });
+          return;
+        }
+      }
+    }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);

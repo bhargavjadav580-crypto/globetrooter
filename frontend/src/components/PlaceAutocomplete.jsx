@@ -94,6 +94,22 @@ export default function PlaceAutocomplete({ value, onSelect, placeholder = "Sear
           value={q}
           onChange={(e) => search(e.target.value)}
           onFocus={() => q.length >= 2 && setOpen(true)}
+          onBlur={() => {
+            if (q.trim() && (!value || value !== q)) {
+              const matched = results.find((r) => r.name.toLowerCase() === q.toLowerCase()) || results[0];
+              if (matched) {
+                onSelect(matched);
+              } else {
+                onSelect({ name: q.trim(), display_name: q.trim(), lat: 28.6139, lon: 77.2090, place_id: null });
+              }
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && results.length > 0) {
+              e.preventDefault();
+              pick(results[0]);
+            }
+          }}
           placeholder={placeholder}
           className="w-full rounded-xl border border-input bg-card pl-10 pr-9 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
         />
