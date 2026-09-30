@@ -14,7 +14,14 @@ export default function CalendarView() {
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [selectedDay, setSelectedDay] = useState(null);
 
-  useEffect(() => { api.get("/trips").then((r) => setTrips(r.data)).catch(() => {}); }, []);
+  useEffect(() => {
+    api.get("/trips").then((r) => {
+      setTrips(Array.isArray(r.data) ? r.data : (r.data?.trips || []));
+    }).catch(() => {
+      const cached = JSON.parse(localStorage.getItem("gt_cached_trips") || "[]");
+      setTrips(cached);
+    });
+  }, []);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();

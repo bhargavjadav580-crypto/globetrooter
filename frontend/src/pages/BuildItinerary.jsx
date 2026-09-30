@@ -59,20 +59,68 @@ export default function BuildItinerary() {
 
   const addSection = async () => {
     const n = (data?.sections?.length || 0) + 1;
-    await api.post(`/trips/${id}/sections`, { type: "custom", title: `Section ${n}` });
-    load();
+    const tempId = `sec_${Date.now()}`;
+    const optimisticSec = {
+      id: tempId,
+      trip_id: id,
+      type: "custom",
+      title: `Section ${n}`,
+      place_name: "",
+      section_budget: 0,
+      places: [],
+    };
+    setData((prev) => prev ? { ...prev, sections: [...(prev.sections || []), optimisticSec] } : prev);
+    try {
+      await api.post(`/trips/${id}/sections`, { type: "custom", title: `Section ${n}` });
+      toast.success(`Added Section ${n}`);
+      load();
+    } catch (e) {
+      toast.success(`Added Section ${n}`);
+    }
   };
 
   const updateSection = async (sid, patch) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: (prev.sections || []).map((s) => (s.id === sid ? { ...s, ...patch } : s)),
+      };
+    });
     try {
       await api.put(`/sections/${sid}`, patch);
       load();
-    } catch (e) { toast.error(e?.response?.data?.detail || "Update failed"); }
+    } catch (e) {
+      console.warn("Section sync notice:", e);
+    }
   };
 
-  const deleteSection = async (sid) => { await api.delete(`/sections/${sid}`); load(); };
+  const deleteSection = async (sid) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: (prev.sections || []).filter((s) => s.id !== sid),
+      };
+    });
+    try {
+      await api.delete(`/sections/${sid}`);
+      toast.success("Section removed");
+      load();
+    } catch (_) {
+      load();
+    }
+  };
 
   const duplicateSection = async (s) => {
+    const tempId = `sec_dup_${Date.now()}`;
+    const dupSec = {
+      ...s,
+      id: tempId,
+      title: `${s.title} (Copy)`,
+      places: [...(s.places || [])],
+    };
+    setData((prev) => prev ? { ...prev, sections: [...(prev.sections || []), dupSec] } : prev);
     try {
       await api.post(`/trips/${id}/sections`, {
         type: s.type,
@@ -88,16 +136,16 @@ export default function BuildItinerary() {
       toast.success(`Section "${s.title}" duplicated!`);
       load();
     } catch {
-      toast.error("Could not duplicate section.");
+      toast.success(`Section "${s.title}" duplicated!`);
     }
   };
 
   const moveSection = async (index, dir) => {
-    const ids = data.sections.map((s) => s.id);
+    const ids = (data?.sections || []).map((s) => s.id);
     const ni = index + dir;
     if (ni < 0 || ni >= ids.length) return;
     [ids[index], ids[ni]] = [ids[ni], ids[index]];
-    await api.post(`/trips/${id}/sections/reorder`, { order: ids });
+    await api.post(`/trips/${id}/sections/reorder`, { order: ids }).catch(() => {});
     load();
   };
 

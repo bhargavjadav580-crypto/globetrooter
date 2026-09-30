@@ -497,10 +497,10 @@ export default function RoadTrip() {
         </div>
         {num && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            {[["Itinerary spend", num.itinerary_costs.total_estimated],
-              ["Overnight stays", num.overnight_stays.total_cost],
+            {[["Itinerary spend", num.itinerary_costs?.total_estimated || 0],
+              ["Overnight stays", num.overnight_stays?.total_cost || 0],
               ["Drive cost (est.)", num.drive_costs?.total || 0],
-              ["Grand total", num.grand_total]].map(([k, v], i) => (
+              ["Grand total", num.grand_total || 0]].map(([k, v], i) => (
               <div key={k} className={`rounded-2xl p-4 ${i === 3 ? "bg-secondary text-secondary-foreground" : "bg-muted"}`}>
                 <p className={`text-xs font-semibold ${i === 3 ? "text-secondary-foreground/70" : "text-muted-foreground"}`}>{k}</p>
                 <p className="font-display font-black text-2xl tracking-tighter" data-testid={`budget-stat-${i}`}>{sym}{Number(v).toLocaleString()}</p>

@@ -4,7 +4,7 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import ItineraryContent from "@/components/ItineraryContent";
 import TripSubNav from "@/components/TripSubNav";
-import { PencilSimple, ShareNetwork, Copy, LinkSimple, Car, MapTrifold, Star } from "@phosphor-icons/react";
+import { PencilSimple, ShareNetwork, Copy, LinkSimple, Car, MapTrifold, Star, Plus } from "@phosphor-icons/react";
 
 export default function ItineraryView() {
   const { id } = useParams();
@@ -65,11 +65,29 @@ export default function ItineraryView() {
   };
 
   const copyTrip = async () => {
-    try { const res = await api.post(`/trips/${id}/copy`); toast.success("Copied to your trips!"); navigate(`/trips/${res.data.id}/view`); }
-    catch { toast.error("Could not copy."); }
+    try {
+      const res = await api.post(`/trips/${id}/copy`);
+      toast.success("Copied to your trips!");
+      navigate(`/trips/${res.data.id}/view`);
+    } catch {
+      toast.error("Could not copy.");
+    }
   };
 
-  if (error) return <div className="mx-auto max-w-3xl px-6 py-20 text-center text-destructive">Could not load this trip.</div>;
+  if (error) {
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-20 text-center space-y-4">
+        <p className="text-destructive font-semibold">Could not load this trip.</p>
+        <button
+          onClick={() => navigate("/trips")}
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+        >
+          Return to My Trips
+        </button>
+      </div>
+    );
+  }
+
   if (!data) return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 space-y-4" data-testid="itinerary-skeleton">
       <div className="h-8 w-56 rounded-2xl bg-muted animate-pulse" />
@@ -81,28 +99,37 @@ export default function ItineraryView() {
             <div className="h-6 w-44 rounded-xl bg-muted animate-pulse" />
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {[1,2,3].map(j => <div key={j} className="h-28 rounded-2xl bg-muted animate-pulse" />)}
+            {[1, 2, 3].map((j) => <div key={j} className="h-28 rounded-2xl bg-muted animate-pulse" />)}
           </div>
         </div>
       ))}
     </div>
   );
 
+  const trip = data?.trip || {};
+
   return (
     <div className="pb-16">
       {/* Persistent Trip Navigation Tab Bar */}
-      <TripSubNav trip={data.trip} onTripUpdated={load} />
+      <TripSubNav trip={trip} onTripUpdated={load} />
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6">
         <div className="flex flex-wrap gap-2 justify-end mb-4">
+          <button
+            data-testid="edit-trip-btn"
+            onClick={() => navigate(`/trips/${id}/build`)}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            <PencilSimple size={16} weight="bold" /> Edit Sections
+          </button>
           <button data-testid="copy-trip-btn" onClick={copyTrip}
             className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground hover:opacity-90 transition-opacity">
             <Copy size={16} weight="bold" /> Clone trip
           </button>
-          {data.trip.is_public ? (
+          {trip.is_public ? (
             <>
               <button data-testid="publish-trip-btn" onClick={publish}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90 transition-opacity">
                 <LinkSimple size={16} weight="bold" /> Copy public link
               </button>
               <button data-testid="unpublish-trip-btn" onClick={unpublish}
@@ -112,14 +139,14 @@ export default function ItineraryView() {
             </>
           ) : (
             <button data-testid="publish-trip-btn" onClick={publish}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
+              className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90 transition-opacity">
               <ShareNetwork size={16} weight="bold" /> Publish trip
             </button>
           )}
         </div>
 
         {/* Post-Trip Celebration Banner */}
-        {data.trip.end_date && new Date(data.trip.end_date + "T23:59:59") < new Date() && (
+        {trip.end_date && new Date(trip.end_date + "T23:59:59") < new Date() && (
           <div className="mb-6 rounded-3xl bg-gradient-to-r from-violet-600 to-indigo-600 p-6 text-white shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -128,7 +155,7 @@ export default function ItineraryView() {
                   Your trip is done! How was it?
                 </h3>
                 <p className="text-sm text-white/80 mt-1">
-                  {data.trip.name} · {data.trip.starting_point} ➔ {data.trip.destination}
+                  {trip.name} · {trip.starting_point} ➔ {trip.destination}
                 </p>
               </div>
               <div className="flex flex-col items-center gap-2">

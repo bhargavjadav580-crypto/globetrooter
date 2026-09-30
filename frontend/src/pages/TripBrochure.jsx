@@ -213,7 +213,7 @@ export default function TripBrochure() {
                 {sec.section_budget > 0 && (
                   <div className="text-right shrink-0">
                     <div className="text-xs text-[#6b6b8a] font-medium">Section Budget</div>
-                    <div className="font-black text-[#1a1a2e]">{sym}{sec.section_budget.toLocaleString("en-IN")}</div>
+                    <div className="font-black text-[#1a1a2e]">{sym}{Number(sec.section_budget || 0).toLocaleString("en-IN")}</div>
                   </div>
                 )}
               </div>
