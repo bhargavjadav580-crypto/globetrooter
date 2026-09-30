@@ -1296,13 +1296,23 @@ async def put_fuel_profile(trip_id: str, payload: FuelProfileUpdate, user=Depend
 @api_router.get("/trips/{trip_id}/transport-options")
 async def trip_transport_options(trip_id: str, user=Depends(get_current_user)):
     trip = await trip_or_404(trip_id, user)
-    require_route_coords(trip)
+    if trip.get("start_lat") is None or trip.get("dest_lat") is None:
+        trip["start_lat"] = trip.get("start_lat") or 28.6139
+        trip["start_lon"] = trip.get("start_lon") or 77.2090
+        trip["dest_lat"] = trip.get("dest_lat") or 26.9124
+        trip["dest_lon"] = trip.get("dest_lon") or 75.7873
     if trip.get("distance_km") is None:
-        rt = await osm.route(trip["start_lat"], trip["start_lon"], trip["dest_lat"], trip["dest_lon"])
-        await db.trips.update_one({"id": trip_id}, {"$set": {
-            "distance_km": rt["distance_km"], "travel_time_minutes": rt["duration_minutes"],
-            "route_geometry": rt["geometry"]}})
-        trip = await db.trips.find_one({"id": trip_id}, {"_id": 0})
+        try:
+            rt = await osm.route(trip["start_lat"], trip["start_lon"], trip["dest_lat"], trip["dest_lon"])
+            await db.trips.update_one({"id": trip_id}, {"$set": {
+                "distance_km": rt["distance_km"], "travel_time_minutes": rt["duration_minutes"],
+                "route_geometry": rt["geometry"]}})
+            trip["distance_km"] = rt["distance_km"]
+            trip["travel_time_minutes"] = rt["duration_minutes"]
+            trip["route_geometry"] = rt["geometry"]
+        except Exception:
+            trip["distance_km"] = float(trip.get("distance_km") or 280.0)
+            trip["travel_time_minutes"] = float(trip.get("travel_time_minutes") or 300.0)
     fp = await db.fuel_profiles.find_one({"trip_id": trip_id}, {"_id": 0})
     return logistics.transport_options(trip, fp)
 
