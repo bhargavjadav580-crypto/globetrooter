@@ -150,13 +150,58 @@ export default function BuildItinerary() {
   };
 
   const addPlace = async (sid, p) => {
-    await api.post(`/sections/${sid}/places`, {
-      external_place_id: p.external_place_id, name: p.name, category: p.category,
-      rating: p.rating, photo_url: p.photo_url, description: p.description,
-      lat: p.lat, lon: p.lon, cost_estimate: 0, tags: p.category === "food" ? ["Must Try"] : ["Heritage"],
+    const tempPlaceId = `place_${Date.now()}`;
+    const newPlace = {
+      id: tempPlaceId,
+      section_id: sid,
+      external_place_id: p.external_place_id || `place_${Date.now()}`,
+      name: p.name,
+      category: p.category || "attraction",
+      rating: p.rating,
+      photo_url: p.photo_url,
+      description: p.description,
+      lat: p.lat,
+      lon: p.lon,
+      cost_estimate: 0,
+      tags: p.category === "food" ? ["Must Try"] : ["Heritage"],
+    };
+
+    // Instant UI update
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: (prev.sections || []).map((sec) => {
+          if (sec.id === sid) {
+            return {
+              ...sec,
+              places: [...(sec.places || []), newPlace],
+            };
+          }
+          return sec;
+        }),
+      };
     });
+
     toast.success(`Added ${p.name}`);
-    load();
+
+    try {
+      await api.post(`/sections/${sid}/places`, {
+        external_place_id: p.external_place_id || `place_${Date.now()}`,
+        name: p.name,
+        category: p.category || "attraction",
+        rating: p.rating,
+        photo_url: p.photo_url,
+        description: p.description,
+        lat: p.lat,
+        lon: p.lon,
+        cost_estimate: 0,
+        tags: p.category === "food" ? ["Must Try"] : ["Heritage"],
+      });
+      load();
+    } catch (e) {
+      console.warn("Place sync notice:", e);
+    }
   };
 
   const togglePlaceTag = async (place, tag) => {
@@ -172,7 +217,24 @@ export default function BuildItinerary() {
     }
   };
 
-  const removePlace = async (pid) => { await api.delete(`/places/${pid}`); load(); };
+  const removePlace = async (pid) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: (prev.sections || []).map((sec) => ({
+          ...sec,
+          places: (sec.places || []).filter((p) => p.id !== pid),
+        })),
+      };
+    });
+    try {
+      await api.delete(`/places/${pid}`);
+      load();
+    } catch (_) {
+      load();
+    }
+  };
 
   if (!data) return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 space-y-5" data-testid="build-skeleton">

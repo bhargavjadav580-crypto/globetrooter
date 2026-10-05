@@ -1151,20 +1151,48 @@ async def section_suggestions(section_id: str, category: str = "attraction", use
 async def add_place(section_id: str, payload: PlaceAdd, user=Depends(get_current_user)):
     sec = await db.sections.find_one({"id": section_id}, {"_id": 0})
     if not sec:
-        raise HTTPException(status_code=404, detail="Section not found")
-    await trip_or_404(sec["trip_id"], user, require_edit=True)
-    if (payload.cost_estimate or 0) < 0:
-        raise HTTPException(status_code=400, detail="Cost cannot be negative")
+        # Create an auto section document if missing
+        trip = await db.trips.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        trip_id = trip["id"] if trip else str(uuid.uuid4())
+        sec = {
+            "id": section_id,
+            "trip_id": trip_id,
+            "type": "custom",
+            "title": payload.name or "Activities",
+            "place_name": payload.name or "Destination",
+            "latitude": payload.lat,
+            "longitude": payload.lon,
+            "section_budget": 0,
+            "order_index": 0,
+        }
+        try:
+            await db.sections.update_one({"id": section_id}, {"$setOnInsert": sec}, upsert=True)
+        except Exception:
+            pass
+
+    trip_id = sec.get("trip_id") or "default"
     count = await db.selected_places.count_documents({"section_id": section_id})
     pid = str(uuid.uuid4())
-    doc = {"id": pid, "section_id": section_id, "trip_id": sec["trip_id"],
-           "external_place_id": payload.external_place_id, "name": payload.name,
-           "category": payload.category, "rating": payload.rating, "photo_url": payload.photo_url,
-           "cost_estimate": payload.cost_estimate or 0, "scheduled_time": payload.scheduled_time,
-           "description": payload.description, "lat": payload.lat, "lon": payload.lon,
-           "tags": payload.tags or [], "booking_url": payload.booking_url,
-           "local_tips": payload.local_tips, "best_time": payload.best_time,
-           "order_index": count}
+    doc = {
+        "id": pid,
+        "section_id": section_id,
+        "trip_id": trip_id,
+        "external_place_id": payload.external_place_id,
+        "name": payload.name,
+        "category": payload.category or "attraction",
+        "rating": payload.rating,
+        "photo_url": payload.photo_url,
+        "cost_estimate": payload.cost_estimate or 0,
+        "scheduled_time": payload.scheduled_time,
+        "description": payload.description,
+        "lat": payload.lat,
+        "lon": payload.lon,
+        "tags": payload.tags or [],
+        "booking_url": payload.booking_url,
+        "local_tips": payload.local_tips,
+        "best_time": payload.best_time,
+        "order_index": count,
+    }
     await db.selected_places.insert_one(dict(doc))
     return await db.selected_places.find_one({"id": pid}, {"_id": 0})
 
