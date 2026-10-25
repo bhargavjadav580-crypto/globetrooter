@@ -28,6 +28,15 @@ export default function TripSubNav({ trip, onTripUpdated }) {
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [currDropdown, setCurrDropdown] = useState(false);
 
+  useEffect(() => {
+    if (trip?.id) {
+      try {
+        localStorage.setItem("gt_active_trip_id", trip.id);
+        localStorage.setItem("gt_active_trip", JSON.stringify(trip));
+      } catch (_) {}
+    }
+  }, [trip]);
+
   if (!trip) return null;
 
   const activeTab = (() => {

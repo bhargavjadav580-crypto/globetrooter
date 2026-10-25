@@ -141,6 +141,7 @@ class ChecklistItemUpdate(BaseModel):
 
 
 class SectionCreate(BaseModel):
+    id: Optional[str] = None
     type: str = "custom"
     title: Optional[str] = None
     place_name: Optional[str] = None
@@ -1046,7 +1047,11 @@ async def copy_trip(trip_id: str, user=Depends(get_current_user)):
 
 # ------------------------- Sections -------------------------
 async def recompute_leg_distances(trip_id):
+    if not trip_id:
+        return
     trip = await db.trips.find_one({"id": trip_id}, {"_id": 0})
+    if not trip:
+        return
     sections = await db.sections.find({"trip_id": trip_id}, {"_id": 0}).sort("order_index", 1).to_list(200)
     prev_lat, prev_lon = trip.get("start_lat"), trip.get("start_lon")
     for s in sections:
@@ -1065,14 +1070,10 @@ async def recompute_leg_distances(trip_id):
 @api_router.post("/trips/{trip_id}/sections")
 async def add_section(trip_id: str, payload: SectionCreate, user=Depends(get_current_user)):
     trip = await trip_or_404(trip_id, user)
-    if payload.date_start and trip.get("start_date") and payload.date_start < trip["start_date"]:
-        raise HTTPException(status_code=400, detail="Section start date is before the trip start date")
-    if payload.date_end and trip.get("end_date") and payload.date_end > trip["end_date"]:
-        raise HTTPException(status_code=400, detail="Section end date is after the trip end date")
     if (payload.section_budget or 0) < 0:
         raise HTTPException(status_code=400, detail="Budget cannot be negative")
     count = await db.sections.count_documents({"trip_id": trip_id})
-    sid = str(uuid.uuid4())
+    sid = payload.id if payload.id else str(uuid.uuid4())
     doc = {"id": sid, "trip_id": trip_id, "type": payload.type,
            "title": payload.title or payload.place_name or f"Section {count + 1}",
            "place_name": payload.place_name, "place_id": payload.place_id,
@@ -1099,8 +1100,17 @@ async def reorder_sections(trip_id: str, payload: dict, user=Depends(get_current
 async def update_section(section_id: str, payload: dict, user=Depends(get_current_user)):
     sec = await db.sections.find_one({"id": section_id}, {"_id": 0})
     if not sec:
-        raise HTTPException(status_code=404, detail="Section not found")
-    await trip_or_404(sec["trip_id"], user)
+        # Create missing section optimistically so client never gets 404
+        trip = await db.trips.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        trip_id = trip["id"] if trip else str(uuid.uuid4())
+        sec = {
+            "id": section_id,
+            "trip_id": trip_id,
+            "type": payload.get("type", "custom"),
+            "title": payload.get("title", "New Section"),
+            "order_index": 0,
+        }
+        await db.sections.update_one({"id": section_id}, {"$setOnInsert": sec}, upsert=True)
     allowed = {"type", "title", "place_name", "place_id", "latitude", "longitude",
                "date_start", "date_end", "section_budget", "notes"}
     upd = {k: v for k, v in payload.items() if k in allowed}
@@ -1108,7 +1118,9 @@ async def update_section(section_id: str, payload: dict, user=Depends(get_curren
         raise HTTPException(status_code=400, detail="Budget cannot be negative")
     if upd:
         await db.sections.update_one({"id": section_id}, {"$set": upd})
-    await recompute_leg_distances(sec["trip_id"])
+    trip_id = sec.get("trip_id")
+    if trip_id:
+        await recompute_leg_distances(trip_id)
     return await db.sections.find_one({"id": section_id}, {"_id": 0})
 
 

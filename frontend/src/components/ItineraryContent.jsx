@@ -36,8 +36,8 @@ export default function ItineraryContent({ data = {}, readOnly = false }) {
     total_budget: trip?.total_budget || 0,
   };
 
-  const subScores = score?.sub_scores || [];
-  const alerts = budget?.alerts || [];
+  const subScores = (Array.isArray(score?.sub_scores) ? score.sub_scores : []).filter((s) => s && s.name);
+  const alerts = Array.isArray(budget?.alerts) ? budget.alerts : [];
   const totalSpent = bd?.total_estimated || 0;
   const totalBudget = (bd?.total_budget != null ? bd.total_budget : trip?.total_budget) || 0;
   const currencySym = trip?.currency_symbol || "₹";
@@ -195,18 +195,23 @@ export default function ItineraryContent({ data = {}, readOnly = false }) {
           {/* Budget Guardian alerts */}
           {alerts.length > 0 && (
             <div className="mt-5 space-y-2" data-testid="budget-alerts">
-              {alerts.map((a, i) => (
-                <div key={a?.section_id ?? a?.section_title ?? i} className="rounded-xl border border-destructive/40 bg-destructive/5 p-3">
-                  <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
-                    <Warning size={16} weight="fill" /> {a?.message}
-                  </p>
-                  {a?.suggestion && (
-                    <p className="flex items-start gap-2 text-xs text-muted-foreground mt-1">
-                      <Lightbulb size={14} weight="fill" className="mt-0.5 shrink-0 text-[hsl(38,68%,50%)]" /> {a.suggestion}
+              {alerts.map((a, i) => {
+                const msg = typeof a === "string" ? a : (a?.message || "Budget notice");
+                const sug = typeof a === "object" ? a?.suggestion : null;
+                const key = typeof a === "object" ? (a?.section_id ?? a?.section_title ?? i) : i;
+                return (
+                  <div key={key} className="rounded-xl border border-destructive/40 bg-destructive/5 p-3">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                      <Warning size={16} weight="fill" /> {msg}
                     </p>
-                  )}
-                </div>
-              ))}
+                    {sug && (
+                      <p className="flex items-start gap-2 text-xs text-muted-foreground mt-1">
+                        <Lightbulb size={14} weight="fill" className="mt-0.5 shrink-0 text-[hsl(38,68%,50%)]" /> {sug}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

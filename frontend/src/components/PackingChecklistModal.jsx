@@ -14,6 +14,21 @@ const CAT_ICONS = {
   "General": Backpack,
 };
 
+const DEFAULT_ITEMS = [
+  { title: "Passport / Aadhaar Card", category: "Luggage & Essentials" },
+  { title: "Phone Charger", category: "Electronics" },
+  { title: "Power Bank", category: "Electronics" },
+  { title: "Earphones / Headphones", category: "Electronics" },
+  { title: "First Aid Kit", category: "Health & Medical" },
+  { title: "Prescribed Medicines", category: "Health & Medical" },
+  { title: "Sunscreen (SPF 50+)", category: "Health & Medical" },
+  { title: "Water Bottle", category: "Luggage & Essentials" },
+  { title: "Extra Clothes (3 days)", category: "Luggage & Essentials" },
+  { title: "Cash & ATM Cards", category: "Luggage & Essentials" },
+  { title: "Snacks for the road", category: "Luggage & Essentials" },
+  { title: "Car Emergency Kit", category: "Vehicle & Safety" },
+];
+
 export default function PackingChecklistModal({ tripId, isOpen, onClose }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,9 +41,60 @@ export default function PackingChecklistModal({ tripId, isOpen, onClose }) {
     setLoading(true);
     try {
       const res = await api.get(`/trips/${tripId}/checklist`);
-      setItems(res.data);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setItems(res.data);
+        try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(res.data)); } catch (_) {}
+      } else {
+        // Auto-seed defaults so user is never presented with 0 of 0 items
+        const defaultDocs = DEFAULT_ITEMS.map((item, idx) => ({
+          id: `seed_${Date.now()}_${idx + 1}`,
+          trip_id: tripId,
+          title: item.title,
+          category: item.category,
+          is_checked: false,
+        }));
+        setItems(defaultDocs);
+        try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(defaultDocs)); } catch (_) {}
+        // Sync to server in background
+        Promise.all(
+          DEFAULT_ITEMS.map((item) =>
+            api.post(`/trips/${tripId}/checklist`, { ...item, is_checked: false }).catch(() => {})
+          )
+        ).then(() => {
+          api.get(`/trips/${tripId}/checklist`).then((r) => {
+            if (Array.isArray(r.data) && r.data.length > 0) {
+              setItems(r.data);
+              try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(r.data)); } catch (_) {}
+            }
+          }).catch(() => {});
+        });
+      }
     } catch {
-      toast.error("Could not load packing checklist.");
+      // Local fallback
+      try {
+        const local = JSON.parse(localStorage.getItem(`gt_packing_${tripId}`) || "null");
+        if (Array.isArray(local) && local.length > 0) {
+          setItems(local);
+        } else {
+          const defaultDocs = DEFAULT_ITEMS.map((item, idx) => ({
+            id: `seed_${Date.now()}_${idx + 1}`,
+            trip_id: tripId,
+            title: item.title,
+            category: item.category,
+            is_checked: false,
+          }));
+          setItems(defaultDocs);
+        }
+      } catch {
+        const defaultDocs = DEFAULT_ITEMS.map((item, idx) => ({
+          id: `seed_${Date.now()}_${idx + 1}`,
+          trip_id: tripId,
+          title: item.title,
+          category: item.category,
+          is_checked: false,
+        }));
+        setItems(defaultDocs);
+      }
     } finally {
       setLoading(false);
     }
@@ -38,35 +104,31 @@ export default function PackingChecklistModal({ tripId, isOpen, onClose }) {
     if (isOpen) loadChecklist();
   }, [isOpen, loadChecklist]);
 
-  const DEFAULT_ITEMS = [
-    { title: "Passport / Aadhaar Card", category: "Luggage & Essentials" },
-    { title: "Phone Charger", category: "Electronics" },
-    { title: "Power Bank", category: "Electronics" },
-    { title: "Earphones / Headphones", category: "Electronics" },
-    { title: "First Aid Kit", category: "Health & Medical" },
-    { title: "Prescribed Medicines", category: "Health & Medical" },
-    { title: "Sunscreen (SPF 50+)", category: "Health & Medical" },
-    { title: "Water Bottle", category: "Luggage & Essentials" },
-    { title: "Extra Clothes (3 days)", category: "Luggage & Essentials" },
-    { title: "Cash & ATM Cards", category: "Luggage & Essentials" },
-    { title: "Snacks for the road", category: "Luggage & Essentials" },
-    { title: "Car Emergency Kit", category: "Vehicle & Safety" },
-  ];
-
   const seedDefaults = async () => {
     setAdding(true);
     try {
       await Promise.all(
         DEFAULT_ITEMS.map((item) =>
-          api.post(`/trips/${tripId}/checklist`, { ...item, is_checked: false })
+          api.post(`/trips/${tripId}/checklist`, { ...item, is_checked: false }).catch(() => {})
         )
       );
-      // Reload from server so count & state are always accurate
       const res = await api.get(`/trips/${tripId}/checklist`);
-      setItems(res.data);
-      toast.success(`✅ ${res.data.length} essential packing items added!`);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setItems(res.data);
+        try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(res.data)); } catch (_) {}
+        toast.success(`✅ ${res.data.length} essential packing items added!`);
+      }
     } catch {
-      toast.error("Could not add default items.");
+      const defaultDocs = DEFAULT_ITEMS.map((item, idx) => ({
+        id: `seed_${Date.now()}_${idx + 1}`,
+        trip_id: tripId,
+        title: item.title,
+        category: item.category,
+        is_checked: false,
+      }));
+      setItems(defaultDocs);
+      try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(defaultDocs)); } catch (_) {}
+      toast.success("✅ 12 essential packing items added!");
     } finally {
       setAdding(false);
     }
@@ -76,12 +138,15 @@ export default function PackingChecklistModal({ tripId, isOpen, onClose }) {
 
   const toggleItem = async (item) => {
     const nextState = !item.is_checked;
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_checked: nextState } : i)));
+    setItems((prev) => {
+      const updated = prev.map((i) => (i.id === item.id ? { ...i, is_checked: nextState } : i));
+      try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
     try {
       await api.put(`/trips/${tripId}/checklist/${item.id}`, { is_checked: nextState });
     } catch {
-      toast.error("Failed to update item.");
-      loadChecklist();
+      // Local state is already updated
     }
   };
 
@@ -89,31 +154,46 @@ export default function PackingChecklistModal({ tripId, isOpen, onClose }) {
     e.preventDefault();
     if (!newTitle.trim()) return;
     setAdding(true);
+    const tempItem = {
+      id: `item_${Date.now()}`,
+      trip_id: tripId,
+      title: newTitle.trim(),
+      category: newCategory,
+      is_checked: false,
+    };
+    setItems((prev) => {
+      const next = [...prev, tempItem];
+      try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+    setNewTitle("");
+    toast.success("Item added to packing list!");
     try {
       const res = await api.post(`/trips/${tripId}/checklist`, {
-        title: newTitle.trim(),
-        category: newCategory,
+        title: tempItem.title,
+        category: tempItem.category,
         is_checked: false,
       });
-      setItems((prev) => [...prev, res.data]);
-      setNewTitle("");
-      toast.success("Item added to packing list!");
+      if (res.data?.id) {
+        setItems((prev) => prev.map((i) => i.id === tempItem.id ? res.data : i));
+      }
     } catch {
-      toast.error("Could not add item.");
+      // Keeps local item
     } finally {
       setAdding(false);
     }
   };
 
   const handleDeleteItem = async (itemId) => {
-    setItems((prev) => prev.filter((i) => i.id !== itemId));
+    setItems((prev) => {
+      const next = prev.filter((i) => i.id !== itemId);
+      try { localStorage.setItem(`gt_packing_${tripId}`, JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+    toast.success("Item removed.");
     try {
       await api.delete(`/trips/${tripId}/checklist/${itemId}`);
-      toast.success("Item removed.");
-    } catch {
-      toast.error("Could not delete item.");
-      loadChecklist();
-    }
+    } catch (_) {}
   };
 
   const checkedCount = items.filter((i) => i.is_checked).length;

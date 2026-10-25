@@ -8,39 +8,53 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
-import { CarProfile, Clock, ArrowRight, SpinnerGap, Warning, MapPinLine } from "@phosphor-icons/react";
+import { CarProfile, Clock, ArrowRight, SpinnerGap, Warning, MapPinLine, ArrowCounterClockwise, Sparkle } from "@phosphor-icons/react";
 import ImageUploader from "@/components/ImageUploader";
+
+const DRAFT_KEY = "gt_create_trip_draft";
 
 export default function CreateTrip() {
   const navigate = useNavigate();
   const location = useLocation();
   const stateData = location.state || {};
 
-  const [name, setName] = useState(stateData.name || "");
-  const [description, setDescription] = useState(stateData.description || "");
+  const savedDraft = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const hasDraft = Boolean(savedDraft && (savedDraft.name || savedDraft.destination || savedDraft.start));
+  const initialData = stateData.name || stateData.starting_point ? stateData : (savedDraft || {});
+
+  const [name, setName] = useState(initialData.name || "");
+  const [description, setDescription] = useState(initialData.description || "");
   const COVERS = [
     "https://images.pexels.com/photos/1078850/pexels-photo-1078850.jpeg",
     "https://images.pexels.com/photos/20208538/pexels-photo-20208538.jpeg",
     "https://images.pexels.com/photos/7368308/pexels-photo-7368308.jpeg",
     "https://images.unsplash.com/photo-1501554728187-ce583db33af7?w=800&q=70",
   ];
-  const [cover, setCover] = useState(stateData.cover_image || COVERS[0]);
+  const [cover, setCover] = useState(initialData.cover_image || COVERS[0]);
   const [start, setStart] = useState(
-    stateData.starting_point && stateData.start_lat
-      ? { name: stateData.starting_point, lat: stateData.start_lat, lon: stateData.start_lon, place_id: null }
-      : null
+    initialData.starting_point && initialData.start_lat
+      ? { name: initialData.starting_point, lat: initialData.start_lat, lon: initialData.start_lon, place_id: initialData.starting_point_place_id || null }
+      : initialData.start || null
   );
   const [dest, setDest] = useState(
-    stateData.destination && stateData.dest_lat
-      ? { name: stateData.destination, lat: stateData.dest_lat, lon: stateData.dest_lon, place_id: null }
-      : null
+    initialData.destination && initialData.dest_lat
+      ? { name: initialData.destination, lat: initialData.dest_lat, lon: initialData.dest_lon, place_id: initialData.destination_place_id || null }
+      : initialData.dest || null
   );
   const [startDate, setStartDate] = useState(() => {
     if (stateData.fromTemplate) {
       const d = new Date();
       return d.toISOString().split("T")[0];
     }
-    return "";
+    return initialData.startDate || initialData.start_date || "";
   });
   const [endDate, setEndDate] = useState(() => {
     if (stateData.fromTemplate) {
@@ -48,14 +62,60 @@ export default function CreateTrip() {
       d.setDate(d.getDate() + 5);
       return d.toISOString().split("T")[0];
     }
-    return "";
+    return initialData.endDate || initialData.end_date || "";
   });
-  const [budget, setBudget] = useState(stateData.total_budget ? String(stateData.total_budget) : "");
+  const [budget, setBudget] = useState(
+    initialData.budget != null ? String(initialData.budget) : (initialData.total_budget ? String(initialData.total_budget) : "")
+  );
   const [dist, setDist] = useState(null);
   const [distLoading, setDistLoading] = useState(false);
   const [distError, setDistError] = useState(false);
-  const [pending, setPending] = useState([]);
+  const [pending, setPending] = useState(Array.isArray(initialData.pending) ? initialData.pending : []);
   const [saving, setSaving] = useState(false);
+
+  // Auto-save draft so leaving to Discover/Search never loses work
+  useEffect(() => {
+    if (name || description || start || dest || budget || (pending && pending.length > 0)) {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          name,
+          description,
+          cover_image: cover,
+          start,
+          dest,
+          starting_point: start?.name,
+          start_lat: start?.lat,
+          start_lon: start?.lon,
+          starting_point_place_id: start?.place_id,
+          destination: dest?.name,
+          dest_lat: dest?.lat,
+          dest_lon: dest?.lon,
+          destination_place_id: dest?.place_id,
+          startDate,
+          endDate,
+          budget,
+          pending,
+        }));
+      } catch (_) {}
+    }
+  }, [name, description, cover, start, dest, startDate, endDate, budget, pending]);
+
+  const startFresh = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (_) {}
+    setName("");
+    setDescription("");
+    setCover(COVERS[0]);
+    setStart(null);
+    setDest(null);
+    setStartDate("");
+    setEndDate("");
+    setBudget("");
+    setPending([]);
+    setDist(null);
+    toast.success("Started fresh! All fields cleared to zero.");
+  };
 
   function calcClientDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -201,6 +261,10 @@ export default function CreateTrip() {
       } catch (_) {}
     }
 
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (_) {}
+
     toast.success("Trip created! Let's build the itinerary.");
     if (trip?.id) {
       navigate(`/trips/${trip.id}/build`);
@@ -212,8 +276,31 @@ export default function CreateTrip() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
-      <p className="overline text-primary mb-2">New adventure</p>
-      <h1 className="font-display font-black text-4xl tracking-tighter mb-8">Plan a new trip</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="overline text-primary">New adventure</p>
+            {hasDraft && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600">
+                <Sparkle size={12} weight="fill" /> In-progress draft preserved
+              </span>
+            )}
+          </div>
+          <h1 className="font-display font-black text-4xl tracking-tighter">Plan a new trip</h1>
+        </div>
+
+        {(name || start || dest || budget || pending.length > 0) && (
+          <button
+            type="button"
+            onClick={startFresh}
+            data-testid="start-fresh-btn"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors shadow-2xs hover:scale-105 active:scale-95"
+            title="Clear all fields and start fresh from zero"
+          >
+            <ArrowCounterClockwise size={14} weight="bold" /> Start fresh (Reset to zero)
+          </button>
+        )}
+      </div>
 
       <div className="grid lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 rounded-3xl border border-border bg-card p-6 space-y-5 h-fit lg:sticky lg:top-20">

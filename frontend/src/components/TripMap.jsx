@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 
@@ -51,10 +51,32 @@ function FitBounds({ points }) {
   return null;
 }
 
+// Fires invalidateSize at 100ms, 400ms, and 1000ms after mount.
+// Ensures tiles fully render even when the map container starts hidden or animating.
+function MapInvalidator() {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const ids = [
+      setTimeout(() => { try { map.invalidateSize({ animate: false }); } catch {} }, 100),
+      setTimeout(() => { try { map.invalidateSize({ animate: false }); } catch {} }, 400),
+      setTimeout(() => { try { map.invalidateSize({ animate: false }); } catch {} }, 1000),
+    ];
+    return () => ids.forEach(clearTimeout);
+  }, [map]);
+  return null;
+}
+
 export default function TripMap({ stops = [], route = [], height = 380 }) {
-  const valid = (stops || []).filter((s) => s && s.lat != null && s.lon != null);
+  const valid = (Array.isArray(stops) ? stops : []).filter(
+    (s) => s && s.lat != null && s.lon != null && !isNaN(Number(s.lat)) && !isNaN(Number(s.lon))
+  ).map((s) => ({ ...s, lat: Number(s.lat), lon: Number(s.lon) }));
   const points = valid.map((s) => [s.lat, s.lon]);
   const center = points[0] || [20.5937, 78.9629];
+
+  const validRoute = (Array.isArray(route) ? route : []).filter(
+    (pt) => Array.isArray(pt) && pt.length >= 2 && !isNaN(Number(pt[0])) && !isNaN(Number(pt[1]))
+  ).map((pt) => [Number(pt[0]), Number(pt[1])]);
 
   return (
     <div className="rounded-2xl overflow-hidden border border-border relative" style={{ height }} data-testid="trip-map">
@@ -69,10 +91,10 @@ export default function TripMap({ stops = [], route = [], height = 380 }) {
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {route && route.length > 1 && (
-          <Polyline positions={route} pathOptions={{ color: "hsl(14,72%,53%)", weight: 4, opacity: 0.85 }} />
+        {validRoute.length > 1 && (
+          <Polyline positions={validRoute} pathOptions={{ color: "hsl(14,72%,53%)", weight: 4, opacity: 0.85 }} />
         )}
-        {valid.length > 1 && (!route || route.length < 2) && (
+        {valid.length > 1 && validRoute.length < 2 && (
           <Polyline positions={points} pathOptions={{ color: "hsl(14,72%,53%)", weight: 3, dashArray: "6 8", opacity: 0.7 }} />
         )}
         {valid.map((s, i) => (
@@ -94,6 +116,7 @@ export default function TripMap({ stops = [], route = [], height = 380 }) {
           </Marker>
         ))}
         <FitBounds points={points} />
+        <MapInvalidator />
       </MapContainer>
     </div>
   );

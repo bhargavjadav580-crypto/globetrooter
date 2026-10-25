@@ -59,7 +59,7 @@ export default function BuildItinerary() {
 
   const addSection = async () => {
     const n = (data?.sections?.length || 0) + 1;
-    const tempId = `sec_${Date.now()}`;
+    const tempId = `sec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const optimisticSec = {
       id: tempId,
       trip_id: id,
@@ -71,9 +71,17 @@ export default function BuildItinerary() {
     };
     setData((prev) => prev ? { ...prev, sections: [...(prev.sections || []), optimisticSec] } : prev);
     try {
-      await api.post(`/trips/${id}/sections`, { type: "custom", title: `Section ${n}` });
+      const res = await api.post(`/trips/${id}/sections`, { id: tempId, type: "custom", title: `Section ${n}` });
+      if (res.data?.id && res.data.id !== tempId) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            sections: (prev.sections || []).map((s) => (s.id === tempId ? { ...s, id: res.data.id } : s)),
+          };
+        });
+      }
       toast.success(`Added Section ${n}`);
-      load();
     } catch (e) {
       toast.success(`Added Section ${n}`);
     }

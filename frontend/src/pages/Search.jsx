@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -69,6 +69,7 @@ function createFallbackResults(cityName, category) {
 
 export default function Search() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [q, setQ] = useState(params.get("q") || "");
   const [cat, setCat] = useState("attraction");
   const [sort, setSort] = useState("distance");
@@ -82,7 +83,19 @@ export default function Search() {
   const [trips, setTrips] = useState([]);
   const [addTarget, setAddTarget] = useState(null);
 
-  useEffect(() => { api.get("/trips").then((r) => setTrips(r.data)).catch(() => {}); }, []);
+  useEffect(() => {
+    api.get("/trips").then((r) => {
+      if (Array.isArray(r.data) && r.data.length > 0) {
+        setTrips(r.data);
+      } else {
+        const cached = JSON.parse(localStorage.getItem("gt_cached_trips") || "[]");
+        setTrips(cached);
+      }
+    }).catch(() => {
+      const cached = JSON.parse(localStorage.getItem("gt_cached_trips") || "[]");
+      setTrips(cached);
+    });
+  }, []);
 
   const run = useCallback(async (query, category) => {
     if (!query || query.trim().length < 2) return;
@@ -161,6 +174,29 @@ export default function Search() {
       toast.success(`Added ${p.name} to your trip`);
       setAddTarget(null);
     }
+  };
+
+  const addToDraftAndCreate = () => {
+    const p = addTarget;
+    if (!p) return;
+    try {
+      const raw = localStorage.getItem("gt_create_trip_draft");
+      const draft = raw ? JSON.parse(raw) : {};
+      const pending = Array.isArray(draft.pending) ? draft.pending : [];
+      if (!pending.some((x) => x.external_place_id === p.external_place_id)) {
+        pending.push(p);
+      }
+      draft.pending = pending;
+      if (!draft.destination) {
+        draft.destination = place?.name || p.name;
+        draft.dest_lat = p.lat || 28.6139;
+        draft.dest_lon = p.lon || 77.2090;
+      }
+      localStorage.setItem("gt_create_trip_draft", JSON.stringify(draft));
+    } catch (_) {}
+    toast.success(`Added ${p.name} to your in-progress trip draft!`);
+    setAddTarget(null);
+    navigate("/trips/new");
   };
 
   const sorted = [...results].filter((r) => r.distance_km <= maxKm).sort((a, b) =>
@@ -321,14 +357,25 @@ export default function Search() {
         <DialogContent>
           <DialogHeader><DialogTitle className="font-display tracking-tight">Add "{addTarget?.name}" to which trip?</DialogTitle></DialogHeader>
           <div className="space-y-2 max-h-80 overflow-y-auto">
-            {trips.length === 0 ? <p className="text-sm text-muted-foreground">You have no trips yet. Create one first.</p> :
-              trips.map((t) => (
-                <button key={t.id} data-testid={`add-to-trip-option-${t.id}`} onClick={() => addToTrip(t.id)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left hover:border-primary transition-colors">
-                  <img src={t.cover_image} alt={t.name} className="h-10 w-14 rounded-lg object-cover" />
-                  <div><p className="font-semibold text-sm">{t.name}</p><p className="text-xs text-muted-foreground">{t.destination}</p></div>
-                </button>
-              ))}
+            <button
+              onClick={addToDraftAndCreate}
+              className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary bg-primary/5 p-3 text-left hover:bg-primary/10 transition-colors"
+            >
+              <div className="h-10 w-10 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold text-lg shrink-0">
+                +
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-primary">+ Add to In-Progress / New Trip Draft</p>
+                <p className="text-xs text-muted-foreground">Save directly to your active trip creator draft</p>
+              </div>
+            </button>
+            {trips.map((t) => (
+              <button key={t.id} data-testid={`add-to-trip-option-${t.id}`} onClick={() => addToTrip(t.id)}
+                className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left hover:border-primary transition-colors">
+                <img src={t.cover_image} alt={t.name} className="h-10 w-14 rounded-lg object-cover" />
+                <div><p className="font-semibold text-sm">{t.name}</p><p className="text-xs text-muted-foreground">{t.destination}</p></div>
+              </button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
